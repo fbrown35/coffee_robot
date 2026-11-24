@@ -1,5 +1,7 @@
 # ☕ 모카: SO-ARM100 바리스타 로봇
 
+[![tests](https://github.com/fbrown35/coffee_robot/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/fbrown35/coffee_robot/actions/workflows/tests.yml)
+
 SO-ARM100 로봇 팔이 필립스 전자동 커피머신(1200 시리즈)을 조작해 커피를 만들고,
 Alibaba Cloud Qwen과 연결해 사용자와 대화하는 프로젝트입니다. 대화 중에 농담을 하고, 미리 정한 범주의 뉴스를 전해 주고,
 질문에 답합니다. 머신에 경고가 뜨면 바로 알려 줍니다.
