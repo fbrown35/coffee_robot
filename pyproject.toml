@@ -1,3 +1,7 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "coffee-robot"
 version = "0.1.0"
@@ -13,7 +17,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-robot = ["lerobot[feetech,smolvla]==0.7.0"]
+# 아래 두 extra 는 LeRobot 0.7.0 요구사항 때문에 Python 3.12 이상 필요 (core/pi/dev 는 3.10+)
+robot = ["lerobot[feetech,smolvla]==0.7.0"]             # PC: 캘리브레이션, 녹화, 정책 실행
+train = ["lerobot[feetech,smolvla,training]==0.7.0"]    # GPU 머신: 학습 (scripts/setup_train_env.sh)
 pi = ["pyserial>=3.5"]  # 라즈베리파이: 카메라 허브 + 서보 브리지
 voice = ["dashscope>=1.20", "sounddevice>=0.4", "soundfile>=0.12"]
 dev = ["pytest>=8", "pyserial>=3.5"]

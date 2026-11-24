@@ -1,5 +1,24 @@
 # 훈련 가이드 — 데모 50개 이하로 커피 만들기 학습
 
+## 0. 한눈에 보기: SmolVLA 파인튜닝이란?
+
+`lerobot/smolvla_base`는 **이미 수많은 SO-100 로봇 영상으로 "로봇 팔 쓰는 법"을 배운 모델**입니다.
+카메라 영상, 현재 관절 각도, 영어 지시문("press the start button")을 받아서 앞으로 1~2초 동안의 관절 움직임을 내놓습니다.
+
+파인튜닝은 이 모델에게 **우리 커피머신과 우리 팔에서만 통하는 동작을 짧게 추가로 가르치는 것**입니다.
+처음부터 배우는 게 아니라서 데모 수십 개로도 충분합니다. 운전을 이미 할 줄 아는 사람에게 새 동네 길만 알려 주는 것과 비슷합니다.
+
+| 순서 | 할 일 | 어디서 | 명령 / 문서 |
+|---|---|---|---|
+| ① | 학습용 GPU 환경 구성 + 점검 | GPU 머신 | `./scripts/setup_train_env.sh` → `./scripts/check_train_env.sh` (§5-1) |
+| ② | 로봇 캘리브레이션, 텔레옵 연습 | 로봇 PC | `coffee-lerobot calibrate` / `teleop` (§4) |
+| ③ | 스킬 4개 데모 녹화 (총 50개 이하) | 로봇 PC | `./scripts/record_all_skills.sh` (§2~4) |
+| ④ | 데이터셋을 GPU 머신으로 옮기기 | | Hub 업로드 또는 폴더 복사 (§5-2) |
+| ⑤ | 파인튜닝 | GPU 머신 | `./scripts/train.sh smolvla <hf_user>/coffee_skills` (§5-3) |
+| ⑥ | 체크포인트를 로봇 PC로 가져와 스킬별 평가, 부족하면 데모 보충 | 로봇 PC | §6 |
+
+로봇 PC에 좋은 GPU가 있으면 ①~⑥을 모두 한 컴퓨터에서 해도 됩니다.
+
 ## 1. 방법 선택: SmolVLA 파인튜닝 + 스킬 분해
 
 | | **SmolVLA 파인튜닝 (권장)** | ACT (처음부터 학습) |
@@ -67,25 +86,87 @@ coffee-lerobot teleop                       # 리더 암으로 조종 연습
 
 ## 5. 학습
 
-GPU 머신에서 실행합니다. 로컬 RTX 3090/4090 이상, 또는 **Alibaba Cloud PAI-DSW** GPU 인스턴스(A10/V100/A100)를
-쓰면 됩니다. 데이터셋은 `--push` 옵션으로 Hugging Face Hub에 올리거나 `~/.cache/huggingface/lerobot/`을 복사합니다.
+### 5-1. 환경 구성 (GPU 머신, 처음 한 번)
+
+필요한 것:
+
+| 항목 | 조건 |
+|---|---|
+| OS | Linux (Ubuntu 22.04/24.04 권장). Alibaba Cloud **PAI-DSW** 나 클라우드 GPU 서버도 같음 |
+| GPU | NVIDIA, VRAM 16GB 이상 권장 (12GB도 배치를 줄이면 가능) + NVIDIA 드라이버 |
+| Python | **3.12 이상** (LeRobot 0.7.0 요구사항). 없으면 스크립트가 `uv`로 설치하는 방법을 안내 |
+| 디스크 | 20GB 이상 여유 (PyTorch, 모델 가중치 약 2GB, 데이터셋, 체크포인트) |
 
 ```bash
-pip install -e ".[robot]"
-./scripts/train.sh smolvla <hf_user>/coffee_skills
-# 메모리가 부족하면: BATCH=16 ./scripts/train.sh smolvla ...
+git clone https://github.com/fbrown35/coffee_robot.git && cd coffee_robot
 ```
 
-| 하이퍼파라미터 | 값 | 이유 |
+```bash
+./scripts/setup_train_env.sh
+```
+
+```bash
+source .venv-train/bin/activate
+```
+
+```bash
+./scripts/check_train_env.sh
+```
+
+- `setup_train_env.sh`: ffmpeg, Python 3.12 가상환경(`.venv-train`), PyTorch(CUDA), LeRobot 0.7.0(`.[train]`)을 설치하고
+  GPU가 인식되는지 출력합니다. 다시 실행해도 안전합니다.
+- `check_train_env.sh`: 실제 녹화와 **같은 형식의 가짜 데이터셋**(640×480 카메라 2대, 관절 6개)을 만들고,
+  `train.sh`와 같은 인자로 SmolVLA를 10스텝 학습해 체크포인트까지 저장되는지 확인합니다. `PASS`가 나오면 준비 끝입니다.
+- CUDA가 안 잡히면(`!! CUDA 를 쓸 수 없습니다`) 드라이버와 PyTorch 버전이 안 맞는 경우가 많습니다.
+  `nvidia-smi` 오른쪽 위의 CUDA 버전을 보고 맞는 휠을 지정해 다시 설치하세요.
+  예: `TORCH_INDEX=https://download.pytorch.org/whl/cu126 ./scripts/setup_train_env.sh`
+- conda를 쓰는 경우: `conda create -n coffee python=3.12 && conda activate coffee` 후 `VENV=$CONDA_PREFIX ./scripts/setup_train_env.sh`
+
+### 5-2. 데이터셋 옮기기 (녹화 PC ≠ 학습 머신일 때)
+
+녹화한 데이터셋은 로봇 PC의 `~/.cache/huggingface/lerobot/<hf_user>/coffee_skills` 에 저장됩니다. 둘 중 하나로 옮기세요.
+
+- **Hugging Face Hub (간단)**: 로봇 PC에서 `hf auth login` 후
+  `hf upload <hf_user>/coffee_skills ~/.cache/huggingface/lerobot/<hf_user>/coffee_skills --repo-type dataset --private`.
+  학습 머신에서는 `repo_id`만 주면 자동으로 내려받습니다.
+- **폴더 복사**: 같은 경로(`~/.cache/huggingface/lerobot/<hf_user>/coffee_skills`)로 `rsync -a` 하면 Hub 없이 그대로 인식됩니다.
+  다른 위치에 두었다면 `DATA_ROOT=/경로 ./scripts/train.sh ...` 로 지정합니다.
+
+### 5-3. 학습 실행
+
+```bash
+./scripts/train.sh smolvla <hf_user>/coffee_skills
+```
+
+SSH 연결이 끊겨도 계속 돌도록 `tmux`나 `nohup` 안에서 실행하세요. 로그의 `loss`가 대체로 내려가면 정상입니다.
+
+| 하이퍼파라미터 | 기본값 | 바꾸는 법 / 이유 |
 |---|---|---|
 | 시작점 | `lerobot/smolvla_base` | SO-100 데이터로 사전학습됨 |
-| steps | 20,000 (데모 수가 적으면 10k~15k도 시험) | 데이터가 적으면 너무 오래 학습할 때 과적합 |
-| batch | 32 (24GB GPU 기준) / 64 (A100) | |
-| 이미지 증강 | `image_transforms.enable=true` | 밝기·대비·작은 이동. 데모가 적을수록 중요 |
-| 카메라 이름 | camera1(정면), camera2(손목) | 사전학습 모델의 입력 이름과 같아서 rename_map 이 필요 없음 |
+| steps | 20,000 | `STEPS=15000`. 데모가 적으면 10k~15k도 시험. 너무 오래 학습하면 데모를 외워 버림(과적합) |
+| batch | 32 | `BATCH=16`. 메모리 부족(`CUDA out of memory`)이면 반으로 줄이기. 시작값: 12~16GB → 4~8, 24GB → 16, 40GB 이상 → 32~64 |
+| 이미지 증강 | 켜짐 | 밝기·대비·작은 이동. 데모가 적을수록 중요 |
+| 카메라 이름 | camera1(정면), camera2(손목) | `smolvla_base`의 입력 이름(camera1~3)과 같아서 rename_map 불필요. camera3은 빈 카메라로 처리됨 |
+| 학습률 스케줄 | LeRobot 기본값 | steps가 기본 감쇠 구간(30k)보다 짧으면 LeRobot이 자동으로 맞춰 줌 |
 
-체크포인트는 5k 스텝마다 저장됩니다. **마지막 체크포인트가 항상 가장 좋은 것은 아니니** 10k/15k/20k를 모두 평가하세요.
-학습 시간은 GPU에 따라 몇 시간 정도 걸립니다.
+배치 크기 값은 출발점일 뿐입니다. 학습 중 `nvidia-smi`로 메모리를 보면서 조절하세요.
+학습 시간은 GPU와 배치에 따라 몇 시간 정도 걸립니다.
+
+중간에 끊겼다면 마지막 체크포인트부터 이어서 학습합니다. 목표 스텝을 늘려서 더 학습할 때도 씁니다(예: `STEPS=25000`).
+
+```bash
+./scripts/train.sh resume outputs/train/coffee_smolvla
+```
+
+### 5-4. 결과물을 로봇 PC로 가져오기
+
+체크포인트는 5k 스텝마다 `outputs/train/coffee_smolvla/checkpoints/<스텝>/pretrained_model` 에 저장되고,
+`checkpoints/last`가 가장 최근 것을 가리킵니다. 이 `pretrained_model` 폴더를 로봇 PC로 복사한 뒤
+`config.yaml`의 `policy.path`에 그 경로를 적습니다. **마지막 체크포인트가 항상 가장 좋은 것은 아니니**
+10k/15k/20k를 모두 가져와 §6처럼 평가해 보세요.
+
+로봇 PC도 정책을 실행하려면 GPU가 있는 게 좋습니다(`policy.device: cuda`). 없으면 학습 머신에서
+`lerobot-policy-server`로 정책을 돌리고 로봇 PC가 원격으로 받는 방법도 있습니다(LeRobot 원격 추론 문서 참고).
 
 ## 6. 평가와 보정 (남은 데모 예산 사용)
 
