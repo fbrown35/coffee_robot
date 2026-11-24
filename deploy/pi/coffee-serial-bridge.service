@@ -1,0 +1,18 @@
+[Unit]
+Description=Coffee robot servo bus bridge (USB serial <-> TCP :8888)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=@USER@
+WorkingDirectory=@REPO@
+ExecStart=@REPO@/.venv/bin/coffee-serial-bridge --config @REPO@/config/config.yaml
+Restart=always
+RestartSec=2
+Environment=PYTHONUNBUFFERED=1
+# 서보 제어 지연을 줄이기 위해 카메라보다 높은 우선순위
+Nice=-5
+
+[Install]
+WantedBy=multi-user.target

@@ -4,7 +4,7 @@
 robot:
   type: so100_follower
   id: coffee_arm                 # lerobot-calibrate 때 쓴 id와 동일해야 함
-  # ESP32 무선 브리지를 쓰면 socat 이 만든 가상 포트, 유선이면 /dev/ttyACM0
+  # 라즈베리파이 경유(무선)면 socat 이 만든 가상 포트, PC 에 직접 USB 로 꽂으면 /dev/ttyACM0
   port: ~/ttyCOFFEE
   max_relative_target: 20        # 한 스텝당 최대 관절 변화(도). 안전장치
   bus_timeout_ms: 150            # WiFi 지연을 고려한 응답 대기(기본 50ms → 150ms)
@@ -15,18 +15,27 @@ teleop:
   id: coffee_leader
   port: /dev/ttyACM0
 
-# ───────────────────────── ESP32 무선 브리지 ─────────────────────────
+# ───────────────────────── 라즈베리파이 (무선 연결) ─────────────────────────
+# [PC 에서 사용] 파이의 서보 브리지에 접속해 가상 시리얼 포트를 만든다 (coffee-wifi-serial)
 wifi_serial:
-  host: coffee-arm.local         # ESP32 mDNS 이름 (또는 IP)
+  host: coffee-pi.local          # 라즈베리파이 호스트 이름 (또는 IP)
   port: 8888
   link: ~/ttyCOFFEE              # 생성할 가상 시리얼 포트
+
+# [파이에서 사용] 서보 드라이버 보드(USB) ↔ TCP (coffee-serial-bridge)
+serial_bridge:
+  device: auto                   # auto = /dev/serial/by-id 의 첫 장치. 여러 개면 경로를 직접 지정
+  baud: 1000000
+  host: 0.0.0.0
+  port: 8888
+  relax_on_disconnect: false     # true 면 연결이 끊길 때 전 서보 토크 해제 (팔이 떨어짐 주의)
 
 # ───────────────────────── 카메라 ─────────────────────────
 # camera_hub 가 USB 카메라를 한 번만 열고 ZMQ로 뿌림 → LeRobot 과 상태감시가 동시에 사용
 # 이름은 SmolVLA 사전학습 키(camera1, camera2)에 맞춤: camera1=정면 USB, camera2=손목
 cameras:
   hub_port: 5555
-  hub_host: 127.0.0.1            # 카메라 허브를 라즈베리파이 등에서 돌리면 그 IP
+  hub_host: coffee-pi.local      # [PC] 카메라 허브가 도는 파이 주소 (같은 PC 에서 돌리면 127.0.0.1)
   jpeg_quality: 85
   devices:
     camera1: {index_or_path: 0, width: 640, height: 480, fps: 30}   # 정면 USB (패널+드립트레이가 보이게)

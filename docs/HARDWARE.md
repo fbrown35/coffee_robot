@@ -1,40 +1,32 @@
 # 하드웨어 구성
 
-## 1. ESP32 무선 브리지 (서보 버스)
+## 1. 무선 연결: 라즈베리파이 (서보 버스 + 카메라)
 
 ```
- PC (LeRobot) ─ WiFi ─ ESP32 ─ UART 1Mbps ─ 버스 서보 드라이버 보드 ─ STS3215 ×6 (SO-ARM100)
-       ↑ socat 가상포트 ~/ttyCOFFEE
+ SO-ARM100 ─ 서보 드라이버 보드 ─USB─┐
+ 손목 카메라 ─────────────USB-A─────┼─ 라즈베리파이 ── WiFi ── PC (LeRobot / 대화 / 패널 감시)
+ 정면 카메라 ─────────────USB-A─────┘     │                       ↑ socat 가상 포트 ~/ttyCOFFEE
+                                          ├ coffee-serial-bridge  (TCP 8888)
+                                          └ coffee-camera-hub     (ZMQ 5555)
 ```
 
-**배선** (사진의 Waveshare Bus Servo Adapter 기준. 다른 보드면 실크 인쇄를 확인하세요)
-
-| ESP32 | 드라이버 보드 |
-|---|---|
-| GPIO17 (TX2) | RX |
-| GPIO16 (RX2) | TX |
-| GND | GND |
-
-- 보드의 노란 점퍼를 **B (UART)** 위치로 옮깁니다. A는 USB 모드입니다.
-- ESP32 전원은 별도 5V USB 전원으로 공급하는 것이 안전합니다. 서보가 움직일 때 생기는 전압 강하로 ESP32가 리셋될 수 있습니다.
-- 보드에 이미 ESP32가 달린 버전(Waveshare General Driver for Robots 등)이면 그 ESP32에 바로 펌웨어를 올리면 되고, 핀 번호만 바꾸세요.
-
-**펌웨어**
-
-1. `firmware/esp32_bus_bridge/secrets.example.h` 파일을 `secrets.h`로 복사하고 WiFi 정보를 넣습니다.
-2. Arduino IDE → 보드 "ESP32 Dev Module" → 업로드.
-3. 시리얼 모니터(115200)에 IP가 표시됩니다. 같은 네트워크의 PC에서 `coffee-wifi-serial --check` 실행.
+설치와 설정은 **[docs/RASPBERRY_PI.md](RASPBERRY_PI.md)** 를 따르세요.
+서보 드라이버 보드의 노란 점퍼는 **A (USB)** 위치에 둡니다.
 
 **지연 시간 관련 팁**
 
 - LeRobot이 30Hz로 돌면 한 스텝마다 위치 읽기 1회와 쓰기 1회를 합니다. WiFi 왕복이 10ms를 넘으면 동작이 끊길 수 있습니다.
-- 펌웨어에서 WiFi 절전과 Nagle을 껐고, PC 쪽 버스 타임아웃은 `robot.bus_timeout_ms`(기본 150ms)로 늘렸습니다.
-- 공유기 가까이에 두고, 가능하면 5GHz를 지원하는 ESP32-C5 또는 전용 2.4GHz AP를 쓰세요.
-- **데이터 수집(녹화) 때는 유선 USB를 권장합니다.** 지연이 섞인 데모는 품질이 떨어집니다. 학습된 정책을 실행할 때만 무선을 써도 됩니다.
+- 서보 브리지는 TCP 지연 전송(Nagle)을 끄고 카메라보다 높은 우선순위로 돕니다. PC 쪽 버스 타임아웃은 `robot.bus_timeout_ms`(기본 150ms)로 늘렸습니다.
+- 파이를 공유기 가까이에 두고 5GHz WiFi를 쓰세요.
+- **데이터 수집(녹화) 때는 서보를 PC에 USB로 직결하는 걸 권장합니다.** 지연이 섞인 데모는 품질이 떨어집니다.
+  카메라는 반대로 **녹화 때도 실행 때와 같이 파이를 거치게** 하세요. JPEG 압축과 지연이 학습과 실행에서 같아야 합니다.
 - 리더 암은 항상 PC에 USB로 직접 연결합니다.
 
-**비상 정지**: 대화창에 "멈춰"/"정지"를 입력하면 즉시 `/reset`(정지 후 홈 복귀)을 보냅니다. WiFi가 끊기면 ESP32는 기본적으로 마지막
-자세를 유지합니다(`RELAX_ON_DISCONNECT=0`). 물리적인 전원 차단 스위치도 반드시 손 닿는 곳에 두세요.
+**유선으로 쓰려면**: 서보 보드와 카메라를 PC에 직접 꽂고, PC에서 `coffee-camera-hub` 를 실행한 뒤
+`robot.port: /dev/ttyACM0`, `cameras.hub_host: 127.0.0.1` 로 설정합니다.
+
+**비상 정지**: 대화창에 "멈춰"/"정지"를 입력하면 즉시 `/reset`(정지 후 홈 복귀)을 보냅니다. PC와 파이의 연결이 끊기면 서보는
+기본적으로 마지막 자세를 유지합니다(`serial_bridge.relax_on_disconnect: false`). 물리적인 전원 차단 스위치도 반드시 손 닿는 곳에 두세요.
 
 ## 2. 카메라
 
@@ -44,10 +36,7 @@
 | camera2 | 손목 (사진의 USB 카메라 모듈) | 정책 입력 (컵 잡기/버튼 정밀 위치) |
 
 - 카메라 두 대는 `coffee-camera-hub`가 한 번만 열고 ZMQ로 방송합니다. LeRobot과 패널 감시가 같은 영상을 동시에 씁니다.
-- **카메라까지 완전히 무선으로 하려면**: 로봇 옆에 라즈베리파이(4/5 또는 Zero 2W)를 두고 USB 카메라 두 대를 연결한 뒤
-  거기서 `coffee-camera-hub`를 실행합니다. PC의 `config.yaml`에서 `cameras.hub_host`를 파이의 IP로 바꾸면 됩니다.
-  (ESP32는 USB 카메라(UVC)를 30fps로 중계할 성능이 부족해서 서보 버스 전용으로 씁니다.)
-- `lerobot-find-cameras opencv`로 카메라 번호를 확인해서 `cameras.devices.*.index_or_path`에 넣습니다.
+- 카메라 경로는 재부팅해도 바뀌지 않는 `/dev/v4l/by-id/...` 를 쓰세요 ([docs/RASPBERRY_PI.md](RASPBERRY_PI.md) §5).
 
 ## 3. 커피머신 패널 판독
 

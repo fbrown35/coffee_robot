@@ -16,12 +16,15 @@ Alibaba Cloud Qwen과 연결해 사용자와 대화하는 프로젝트입니다.
                        │     ▼                                                    │
                        │  lerobot-rollout --interactive (SmolVLA 파인튜닝 정책)  │
                        └─────┬───────────────────────────────▲──────────────────┘
-                 socat ~/ttyCOFFEE                    ZMQ :5555 (camera_hub)
+                 socat ~/ttyCOFFEE                    ZMQ :5555
                              │ WiFi TCP:8888                 │
-                        ┌────▼────┐                  ┌───────┴────────┐
-                        │  ESP32  │─UART─ 서보 보드 ─ │ camera1(정면)  │
-                        └─────────┘   SO-ARM100      │ camera2(손목)  │
-                                                     └────────────────┘
+                        ┌────▼───────────────────────────────┴─────┐
+                        │ 라즈베리파이                              │
+                        │  coffee-serial-bridge  coffee-camera-hub  │
+                        └────┬──────────────────────────┬───────────┘
+                         USB │                      USB-A│
+                   서보 드라이버 보드            camera1(정면), camera2(손목)
+                         SO-ARM100
 ```
 
 ## 동작 순서
@@ -47,25 +50,22 @@ cp .env.example .env                     # DASHSCOPE_API_KEY 입력
 coffee-robot --dry-run
 ```
 
-실제 로봇에서는 터미널을 3개 엽니다.
+실제 로봇에서는 라즈베리파이에 서보 브리지와 카메라 허브 서비스를 설치합니다 ([docs/RASPBERRY_PI.md](docs/RASPBERRY_PI.md)).
+파이는 부팅하면 서비스가 자동으로 시작되고, PC에서는 터미널을 2개 엽니다.
 
 ```bash
-coffee-wifi-serial        # 1) ESP32 ↔ ~/ttyCOFFEE
+coffee-wifi-serial        # 1) 파이의 서보 버스 ↔ ~/ttyCOFFEE
 ```
 
 ```bash
-coffee-camera-hub         # 2) 카메라 방송
-```
-
-```bash
-coffee-robot              # 3) 모카 실행 (정책은 첫 커피 요청 때 로딩)
+coffee-robot              # 2) 모카 실행 (정책은 첫 커피 요청 때 로딩)
 ```
 
 ## 개발 단계
 
 | 단계 | 할 일 | 문서 |
 |---|---|---|
-| 1 | ESP32 펌웨어, 배선, 카메라 위치 | [docs/HARDWARE.md](docs/HARDWARE.md) |
+| 1 | 라즈베리파이 설치, 배선, 카메라 위치 | [docs/RASPBERRY_PI.md](docs/RASPBERRY_PI.md), [docs/HARDWARE.md](docs/HARDWARE.md) |
 | 2 | 캘리브레이션, 텔레옵 연습, **터치 버튼용 전도성 팁** 부착 | [docs/TRAINING.md](docs/TRAINING.md) §3 |
 | 3 | 스킬 4개 데모 녹화 (총 50개 이하) | [docs/TRAINING.md](docs/TRAINING.md) §4 |
 | 4 | SmolVLA 파인튜닝 (GPU) → `policy.path` 지정 | [docs/TRAINING.md](docs/TRAINING.md) §5 |
@@ -95,10 +95,11 @@ coffee_robot/
   news.py           범주별 오늘 뉴스 (RSS)
   voice.py          (선택) Paraformer ASR / CosyVoice TTS
   notify.py         콘솔/음성/ntfy/텔레그램 알림
-  camera_hub.py     USB 카메라 → ZMQ (LeRobot ZMQ 카메라 호환)
-  wifi_serial.py    ESP32 TCP → 가상 시리얼 포트 (socat)
+  camera_hub.py     [파이] USB 카메라 → ZMQ (LeRobot ZMQ 카메라 호환)
+  serial_bridge.py  [파이] USB 시리얼 ↔ TCP:8888 서보 버스 브리지
+  wifi_serial.py    [PC] 파이 브리지 → 가상 시리얼 포트 (socat)
   lerobot_launcher.py  config 기반 LeRobot 0.7 CLI 래퍼 (calibrate/teleop/record/rollout)
-firmware/esp32_bus_bridge/   ESP32 투명 브리지 펌웨어
+deploy/pi/         라즈베리파이 systemd 서비스 + install.sh
 scripts/            record_all_skills.sh, train.sh, calibrate_panel.py
 tests/              pytest (로봇/네트워크 없이 실행)
 ```

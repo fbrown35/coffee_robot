@@ -14,13 +14,15 @@ dependencies = [
 
 [project.optional-dependencies]
 robot = ["lerobot[feetech,smolvla]==0.7.0"]
+pi = ["pyserial>=3.5"]  # 라즈베리파이: 카메라 허브 + 서보 브리지
 voice = ["dashscope>=1.20", "sounddevice>=0.4", "soundfile>=0.12"]
-dev = ["pytest>=8"]
+dev = ["pytest>=8", "pyserial>=3.5"]
 
 [project.scripts]
 coffee-robot = "coffee_robot.assistant:main"
 coffee-camera-hub = "coffee_robot.camera_hub:main"
 coffee-wifi-serial = "coffee_robot.wifi_serial:main"
+coffee-serial-bridge = "coffee_robot.serial_bridge:main"
 coffee-lerobot = "coffee_robot.lerobot_launcher:main"
 
 [tool.setuptools]
