@@ -27,7 +27,14 @@ CKPT="${WORK}/out/checkpoints/last/pretrained_model"
 if [[ -f "${CKPT}/model.safetensors" ]]; then
   echo
   echo "PASS: 학습과 체크포인트 저장 정상 ($((t1 - t0))초, ${STEPS}스텝, batch ${BATCH}, ${DEVICE})"
-  echo "실제 학습의 배치 크기는 docs/TRAINING.md §5 를 참고하고, 학습 중 nvidia-smi 로 메모리를 보며 조절하세요."
+  echo "예상 학습 시간 ≈ ($((t1 - t0))초 ÷ ${STEPS}) × 학습 스텝 수 (모델 로딩 시간이 포함돼 실제보다 조금 길게 나옴)"
+  if [[ "${DEVICE}" == "mps" ]]; then
+    echo "배치 크기는 docs/TRAINING.md §5-1 (Mac) 참고. 학습 중 '활성 상태 보기'의 메모리 압력을 보며 조절하세요."
+  elif [[ "${DEVICE}" == "cuda" ]]; then
+    echo "배치 크기는 docs/TRAINING.md §5-3 참고. 학습 중 nvidia-smi 로 GPU 메모리를 보며 조절하세요."
+  else
+    echo "!! GPU 없이 CPU 로 학습하면 매우 느립니다. NVIDIA GPU 또는 Apple Silicon Mac 을 권장합니다."
+  fi
 else
   echo
   echo "FAIL: 체크포인트가 만들어지지 않았습니다. 위 오류를 확인하세요."
