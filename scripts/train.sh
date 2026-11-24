@@ -6,7 +6,7 @@
 #
 # 환경변수로 조절:
 #   BATCH=16 STEPS=15000 ./scripts/train.sh smolvla ...   배치 크기 / 학습 스텝
-#   DEVICE=cpu|cuda|mps                                   (기본 cuda)
+#   DEVICE=cpu|cuda|mps                                   (기본: 자동 감지 cuda → mps(Apple Silicon) → cpu)
 #   DATA_ROOT=/path/to/dataset                            Hub 가 아닌 특정 폴더의 데이터셋 사용
 #   OUT=outputs/train/my_run                              출력 폴더 (기본 outputs/train/coffee_<policy>)
 # 추가 인자는 그대로 lerobot-train 에 전달됨. 예: --num_workers=8 --log_freq=100
@@ -24,7 +24,12 @@ POLICY="${1:?smolvla|act|resume}"
 REPO_ID="${2:?<hf_user>/coffee_skills}"
 shift 2
 OUT="${OUT:-outputs/train/coffee_${POLICY}}"
-DEVICE="${DEVICE:-cuda}"
+DEVICE="${DEVICE:-$(python -c 'import torch; print("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")')}"
+if [[ "${DEVICE}" == "mps" ]]; then
+  # Apple Silicon: MPS 가 지원하지 않는 연산은 CPU 로 대신 계산 (없으면 해당 연산에서 학습이 멈춤)
+  export PYTORCH_ENABLE_MPS_FALLBACK=1
+fi
+echo "학습 장치: ${DEVICE}"
 COMMON=(
   --dataset.repo_id="${REPO_ID}"
   --dataset.image_transforms.enable=true

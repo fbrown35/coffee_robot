@@ -92,8 +92,8 @@ coffee-lerobot teleop                       # 리더 암으로 조종 연습
 
 | 항목 | 조건 |
 |---|---|
-| OS | Linux (Ubuntu 22.04/24.04 권장). Alibaba Cloud **PAI-DSW** 나 클라우드 GPU 서버도 같음 |
-| GPU | NVIDIA, VRAM 16GB 이상 권장 (12GB도 배치를 줄이면 가능) + NVIDIA 드라이버 |
+| OS | Linux (Ubuntu 22.04/24.04 권장) 또는 **macOS (Apple Silicon)**. Alibaba Cloud PAI-DSW 나 클라우드 GPU 서버도 같음 |
+| GPU | NVIDIA VRAM 16GB 이상 권장 (12GB도 배치를 줄이면 가능), 또는 Apple M1~M4 (통합 메모리 32GB 이상 권장) |
 | Python | **3.12 이상** (LeRobot 0.7.0 요구사항). 없으면 스크립트가 `uv`로 설치하는 방법을 안내 |
 | 디스크 | 20GB 이상 여유 (PyTorch, 모델 가중치 약 2GB, 데이터셋, 체크포인트) |
 
@@ -121,6 +121,24 @@ source .venv-train/bin/activate
   `nvidia-smi` 오른쪽 위의 CUDA 버전을 보고 맞는 휠을 지정해 다시 설치하세요.
   예: `TORCH_INDEX=https://download.pytorch.org/whl/cu126 ./scripts/setup_train_env.sh`
 - conda를 쓰는 경우: `conda create -n coffee python=3.12 && conda activate coffee` 후 `VENV=$CONDA_PREFIX ./scripts/setup_train_env.sh`
+
+#### Mac (Apple Silicon: M1 Max, Mac Studio 등)으로 학습하기
+
+**가능합니다.** LeRobot은 Apple GPU(MPS)를 지원하고, `setup_train_env.sh`와 `train.sh`가 Mac을 자동으로 인식합니다
+(`DEVICE=mps`, 지원하지 않는 연산은 CPU로 대신 계산하도록 `PYTORCH_ENABLE_MPS_FALLBACK=1` 설정).
+위의 4개 명령을 똑같이 실행하면 되고, ffmpeg는 Homebrew(`brew install ffmpeg`)로 설치됩니다.
+
+알아 둘 점:
+
+- **속도**: NVIDIA GPU보다 느립니다. 얼마나 걸릴지는 직접 재 보는 게 정확합니다.
+  `STEPS=50 BATCH=8 ./scripts/check_train_env.sh` 를 실행하면 끝에 걸린 시간이 나오니,
+  (걸린 시간 ÷ 50) × 학습 스텝 수로 전체 시간을 어림합니다. 처음 몇 스텝은 준비 시간이 섞여 있어 실제보다 조금 느리게 나옵니다.
+- **배치 크기**: Mac은 CPU와 GPU가 메모리를 함께 씁니다. 시작값으로 32GB 모델은 `BATCH=8`, 64GB 모델은 `BATCH=16`을 쓰고,
+  활성 상태 보기(Activity Monitor)의 메모리 압력이 빨간색이 되면 줄이세요. 배치를 줄였다면 `STEPS`를 조금 늘리는 게 좋습니다.
+- **스텝 수**: 시간이 너무 길게 나오면 `STEPS=10000`부터 학습해서 평가해 보고, 부족하면 `./scripts/train.sh resume ...`으로 이어서 늘리세요.
+- **잠자기 방지**: 학습 중 Mac이 잠들지 않도록 `caffeinate -i ./scripts/train.sh smolvla <hf_user>/coffee_skills` 처럼 실행하세요.
+- 좋은 점: 로봇 PC와 학습 머신을 Mac Studio 한 대로 합치면 데이터셋을 옮길 필요가 없고(§5-2 생략), 학습한 정책도 같은 Mac에서
+  MPS로 바로 실행할 수 있습니다(`config.yaml`의 `policy.device: mps`).
 
 ### 5-2. 데이터셋 옮기기 (녹화 PC ≠ 학습 머신일 때)
 

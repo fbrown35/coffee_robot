@@ -45,7 +45,7 @@ cameras:
 policy:
   # 학습 후 체크포인트 경로 (로컬 폴더 또는 HF repo id)
   path: outputs/train/coffee_smolvla/checkpoints/last/pretrained_model
-  device: cuda                   # cuda / mps / cpu
+  device: cuda                   # cuda (NVIDIA) / mps (Apple Silicon Mac) / cpu
   inference: rtc                 # SmolVLA 는 rtc 권장, ACT 는 sync
   fps: 30
 
