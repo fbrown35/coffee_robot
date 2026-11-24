@@ -39,7 +39,7 @@ Alibaba Cloud Qwen과 연결해 사용자와 대화하는 프로젝트입니다.
 ## 빠른 시작
 
 ```bash
-pip install -e ".[robot,dev]"            # 음성까지: ".[robot,voice,dev]"
+pip install -e ".[robot,dev]"            # 음성까지: ".[robot,voice,dev]"  (robot 은 Python 3.12+)
 cp config/config.example.yaml config/config.yaml
 cp .env.example .env                     # DASHSCOPE_API_KEY 입력
 ```
@@ -68,7 +68,7 @@ coffee-robot              # 2) 모카 실행 (정책은 첫 커피 요청 때 �
 | 1 | 라즈베리파이 설치, 배선, 카메라 위치 | [docs/RASPBERRY_PI.md](docs/RASPBERRY_PI.md), [docs/HARDWARE.md](docs/HARDWARE.md) |
 | 2 | 캘리브레이션, 텔레옵 연습, **터치 버튼용 전도성 팁** 부착 | [docs/TRAINING.md](docs/TRAINING.md) §3 |
 | 3 | 스킬 4개 데모 녹화 (총 50개 이하) | [docs/TRAINING.md](docs/TRAINING.md) §4 |
-| 4 | SmolVLA 파인튜닝 (GPU) → `policy.path` 지정 | [docs/TRAINING.md](docs/TRAINING.md) §5 |
+| 4 | 학습 환경 구성(`scripts/setup_train_env.sh`, `check_train_env.sh`) → SmolVLA 파인튜닝 → `policy.path` 지정 | [docs/TRAINING.md](docs/TRAINING.md) §0, §5 |
 | 5 | 스킬별 평가, 보정 데모 | [docs/TRAINING.md](docs/TRAINING.md) §6 |
 | 6 | 패널 ROI 캘리브레이션 (`scripts/calibrate_panel.py`) | [docs/HARDWARE.md](docs/HARDWARE.md) §3 |
 | 7 | `config.yaml`에서 뉴스 범주, 말투, 알림 설정 | |
@@ -100,7 +100,8 @@ coffee_robot/
   wifi_serial.py    [PC] 파이 브리지 → 가상 시리얼 포트 (socat)
   lerobot_launcher.py  config 기반 LeRobot 0.7 CLI 래퍼 (calibrate/teleop/record/rollout)
 deploy/pi/         라즈베리파이 systemd 서비스 + install.sh
-scripts/            record_all_skills.sh, train.sh, calibrate_panel.py
+scripts/            setup_train_env.sh, check_train_env.sh, make_fake_dataset.py,
+                    record_all_skills.sh, train.sh, calibrate_panel.py
 tests/              pytest (로봇/네트워크 없이 실행)
 ```
 
