@@ -1,0 +1,131 @@
+# 복사해서 사용: cp config/config.example.yaml config/config.yaml
+
+# ───────────────────────── 로봇 (SO-ARM100 follower) ─────────────────────────
+robot:
+  type: so100_follower
+  id: coffee_arm                 # lerobot-calibrate 때 쓴 id와 동일해야 함
+  # ESP32 무선 브리지를 쓰면 socat 이 만든 가상 포트, 유선이면 /dev/ttyACM0
+  port: ~/ttyCOFFEE
+  max_relative_target: 20        # 한 스텝당 최대 관절 변화(도). 안전장치
+  bus_timeout_ms: 150            # WiFi 지연을 고려한 응답 대기(기본 50ms → 150ms)
+
+# 리더 암(텔레오퍼레이션, 데이터 수집용). 지연 없이 하려면 PC에 USB로 직접 연결
+teleop:
+  type: so100_leader
+  id: coffee_leader
+  port: /dev/ttyACM0
+
+# ───────────────────────── ESP32 무선 브리지 ─────────────────────────
+wifi_serial:
+  host: coffee-arm.local         # ESP32 mDNS 이름 (또는 IP)
+  port: 8888
+  link: ~/ttyCOFFEE              # 생성할 가상 시리얼 포트
+
+# ───────────────────────── 카메라 ─────────────────────────
+# camera_hub 가 USB 카메라를 한 번만 열고 ZMQ로 뿌림 → LeRobot 과 상태감시가 동시에 사용
+# 이름은 SmolVLA 사전학습 키(camera1, camera2)에 맞춤: camera1=정면 USB, camera2=손목
+cameras:
+  hub_port: 5555
+  hub_host: 127.0.0.1            # 카메라 허브를 라즈베리파이 등에서 돌리면 그 IP
+  jpeg_quality: 85
+  devices:
+    camera1: {index_or_path: 0, width: 640, height: 480, fps: 30}   # 정면 USB (패널+드립트레이가 보이게)
+    camera2: {index_or_path: 2, width: 640, height: 480, fps: 30}   # 손목 카메라
+
+# ───────────────────────── 정책 / 스킬 ─────────────────────────
+policy:
+  # 학습 후 체크포인트 경로 (로컬 폴더 또는 HF repo id)
+  path: outputs/train/coffee_smolvla/checkpoints/last/pretrained_model
+  device: cuda                   # cuda / mps / cpu
+  inference: rtc                 # SmolVLA 는 rtc 권장, ACT 는 sync
+  fps: 30
+
+# 각 스킬 = 데모 녹화 단위 = 정책에 주는 언어 지시문
+# timeout_s 안에 verify 조건이 만족되면 성공, 아니면 retries 만큼 재시도
+skills:
+  power_on:
+    task: "press the power button of the coffee machine"
+    timeout_s: 15
+    verify: panel_lit
+    retries: 1
+    demos: 8
+  place_cup:
+    task: "pick up a paper cup and place it under the coffee spout"
+    timeout_s: 40
+    verify: cup_under_spout
+    retries: 1
+    demos: 22
+  press_shot:
+    task: "press the espresso button"
+    timeout_s: 15
+    verify: none
+    retries: 0
+    demos: 8
+  press_start:
+    task: "press the start button"
+    timeout_s: 15
+    verify: brewing
+    retries: 1
+    demos: 8
+
+# 커피 한 잔 만드는 순서
+recipe:
+  - power_on
+  - wait_ready        # 예열(헹굼) 끝날 때까지 대기 (로봇 동작 없음)
+  - place_cup
+  - press_shot
+  - press_start
+  - wait_brew         # 추출 대기 (이때 대화/뉴스)
+warmup_timeout_s: 120
+brew_timeout_s: 120
+brew_min_s: 20        # 이 시간 전에는 '추출 끝'으로 판정하지 않음
+
+# ───────────────────────── 커피머신 패널 감시 ─────────────────────────
+# scripts/calibrate_panel.py 로 camera1 화면에서 각 아이콘 위치를 클릭해 저장
+panel:
+  camera: camera1
+  threshold: 60          # 배경 대비 밝기 차이(0~255). 켜진 LED 판정 기준
+  sample_s: 2.0          # 깜빡임 판정용 관찰 시간
+  rois: {}               # calibrate_panel.py 가 채움. 예) warning: [x, y, w, h]
+  reference_off: {}      # 꺼진 상태 기준 밝기 (calibrate_panel.py 가 채움)
+
+# ───────────────────────── Alibaba Cloud (DashScope / Model Studio) ─────────────────────────
+llm:
+  # 국제(싱가포르) 리전. 중국 리전이면 https://dashscope.aliyuncs.com/compatible-mode/v1
+  base_url: https://dashscope-intl.aliyuncs.com/compatible-mode/v1
+  api_key_env: DASHSCOPE_API_KEY
+  chat_model: qwen-plus
+  vision_model: qwen-vl-max
+  temperature: 0.8
+  persona: |
+    너는 '모카'라는 이름의 바리스타 로봇 팔이야. SO-ARM100 로봇 팔로 필립스 전자동 커피머신을 조작해.
+    한국어로, 짧고 다정하게(2~3문장) 말해. 적당히 농담도 해. 음성으로 읽힐 수 있으니 이모지·마크다운은 쓰지 마.
+    커피를 만들어 달라고 하면 make_coffee 도구를 써. 머신 상태가 궁금하면 check_machine 도구를 써.
+    뉴스를 물으면 get_news 도구로 가져온 기사만 근거로 요약하고, 모르는 건 지어내지 마.
+    에러나 문제가 생기면 무엇이 문제인지와 사용자가 해야 할 일을 분명히 말해.
+
+# ───────────────────────── 뉴스 ─────────────────────────
+news:
+  language: ko
+  country: KR
+  max_items_per_category: 4
+  categories:            # 원하는 범주와 검색어
+    AI: "인공지능 OR AI"
+    로봇: "로봇 OR 휴머노이드"
+    경제: "경제 OR 증시"
+    날씨: "날씨"
+
+# ───────────────────────── 음성 (선택) ─────────────────────────
+voice:
+  enabled: false
+  asr_model: paraformer-realtime-v2
+  tts_model: cosyvoice-v2
+  tts_voice: longxiaochun_v2     # 한국어 지원 음색으로 바꿔 쓸 것 (Model Studio 콘솔에서 확인)
+  sample_rate: 16000
+  record_seconds: 6
+
+# ───────────────────────── 알림 ─────────────────────────
+notify:
+  speak: true                    # voice.enabled 일 때 TTS 로 읽기
+  ntfy_topic: ""                 # https://ntfy.sh/<topic> 으로 휴대폰 푸시 (빈칸이면 사용 안 함)
+  telegram: false                # TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID 환경변수 사용

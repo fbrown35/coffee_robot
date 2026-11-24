@@ -1,0 +1,30 @@
+[project]
+name = "coffee-robot"
+version = "0.1.0"
+description = "SO-ARM100 + Philips 1200 series coffee barista robot with Qwen (Alibaba Cloud) conversation"
+requires-python = ">=3.10"
+dependencies = [
+  "pyyaml>=6",
+  "numpy>=1.24",
+  "opencv-python>=4.8",
+  "pyzmq>=25",
+  "openai>=1.40",       # DashScope OpenAI 호환 엔드포인트용
+  "requests>=2.31",
+]
+
+[project.optional-dependencies]
+robot = ["lerobot[feetech,smolvla]==0.7.0"]
+voice = ["dashscope>=1.20", "sounddevice>=0.4", "soundfile>=0.12"]
+dev = ["pytest>=8"]
+
+[project.scripts]
+coffee-robot = "coffee_robot.assistant:main"
+coffee-camera-hub = "coffee_robot.camera_hub:main"
+coffee-wifi-serial = "coffee_robot.wifi_serial:main"
+coffee-lerobot = "coffee_robot.lerobot_launcher:main"
+
+[tool.setuptools]
+packages = ["coffee_robot"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

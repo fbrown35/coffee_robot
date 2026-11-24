@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+.venv/
+.env
+config/config.yaml
+firmware/esp32_bus_bridge/secrets.h
+outputs/
+data/
+logs/
+*.wav
+*.mp3
