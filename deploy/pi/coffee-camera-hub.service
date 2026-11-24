@@ -1,0 +1,18 @@
+[Unit]
+Description=Coffee robot camera hub (USB cameras -> ZMQ :5555)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=@USER@
+WorkingDirectory=@REPO@
+ExecStart=@REPO@/.venv/bin/coffee-camera-hub --config @REPO@/config/config.yaml
+Restart=always
+RestartSec=3
+Environment=PYTHONUNBUFFERED=1
+# 영상 인코딩이 서보 브리지를 밀어내지 않도록 우선순위를 낮춤
+Nice=5
+
+[Install]
+WantedBy=multi-user.target

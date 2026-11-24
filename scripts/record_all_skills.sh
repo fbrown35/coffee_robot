@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # 모든 스킬 데모를 하나의 데이터셋(멀티태스크)에 순서대로 녹화한다.
 # 사용: ./scripts/record_all_skills.sh <hf_user>/coffee_skills
-# 사전 실행(각각 다른 터미널): coffee-wifi-serial  /  coffee-camera-hub
+# 사전 준비: 파이에서 서비스 실행 중 (docs/RASPBERRY_PI.md), PC 에서 coffee-wifi-serial 실행
+#          (USB 직결로 녹화하면 config 의 robot.port=/dev/ttyACM*, cameras.hub_host=127.0.0.1 + 로컬 coffee-camera-hub)
 #
 # 녹화 중 키보드: → 에피소드 조기 종료(성공), ← 다시 녹화, ESC 전체 중단
 set -euo pipefail

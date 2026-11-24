@@ -46,11 +46,10 @@
 ## 4. 녹화
 
 ```bash
-# 터미널 1: ESP32 무선 브리지 (유선이면 생략하고 robot.port 를 /dev/ttyACM* 로)
+# 라즈베리파이: 서보 브리지 + 카메라 허브 서비스가 실행 중이어야 함 (docs/RASPBERRY_PI.md)
+# PC 터미널 1: 파이의 서보 버스를 가상 포트로 연결 (USB 직결이면 생략하고 robot.port 를 /dev/ttyACM* 로)
 coffee-wifi-serial
-# 터미널 2: 카메라 허브
-coffee-camera-hub
-# 터미널 3: 캘리브레이션 (처음 한 번)
+# PC 터미널 2: 캘리브레이션 (처음 한 번)
 coffee-lerobot calibrate
 coffee-lerobot calibrate-leader
 coffee-lerobot teleop                       # 리더 암으로 조종 연습

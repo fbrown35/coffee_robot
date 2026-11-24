@@ -1,4 +1,4 @@
-"""ESP32 TCP 브리지를 가상 시리얼 포트로 노출한다 (socat 사용).
+"""[PC] 라즈베리파이의 서보 브리지(coffee-serial-bridge, TCP:8888)를 가상 시리얼 포트로 노출한다 (socat 사용).
 
     coffee-wifi-serial            # config 의 wifi_serial 설정 사용
     → ~/ttyCOFFEE 가 생기고 LeRobot 에서 --robot.port=~/ttyCOFFEE 로 사용
@@ -27,7 +27,7 @@ def socat_cmd(host: str, port: int, link: str) -> list[str]:
     ]
 
 
-def esp32_reachable(host: str, port: int, timeout: float = 2.0) -> bool:
+def bridge_reachable(host: str, port: int, timeout: float = 2.0) -> bool:
     try:
         with socket.create_connection((host, port), timeout=timeout):
             return True
@@ -48,14 +48,14 @@ def run_forever(host: str, port: int, link: str) -> None:
 
 
 def main() -> None:
-    ap = argparse.ArgumentParser(description="ESP32 WiFi ↔ 가상 시리얼 포트")
+    ap = argparse.ArgumentParser(description="라즈베리파이 서보 브리지 ↔ 가상 시리얼 포트")
     ap.add_argument("--config", default=None)
-    ap.add_argument("--check", action="store_true", help="ESP32 접속만 확인")
+    ap.add_argument("--check", action="store_true", help="파이 브리지 접속만 확인")
     args = ap.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     c = load_config(args.config)["wifi_serial"]
     if args.check:
-        ok = esp32_reachable(c["host"], c["port"])
+        ok = bridge_reachable(c["host"], c["port"])
         print(f"{c['host']}:{c['port']} -> {'OK' if ok else 'UNREACHABLE'}")
         raise SystemExit(0 if ok else 1)
     run_forever(c["host"], c["port"], c["link"])
