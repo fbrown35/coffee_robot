@@ -64,6 +64,8 @@
 
 ## 4. 녹화
 
+> 캘리브레이션부터 녹화까지 단계별 설명(Mac 기준, 화면 안내·키 조작·문제 해결 포함)은 Word 문서 **[CALIBRATION_RECORDING_GUIDE.docx](CALIBRATION_RECORDING_GUIDE.docx)** 에 있습니다.
+
 ```bash
 # 라즈베리파이: 서보 브리지 + 카메라 허브 서비스가 실행 중이어야 함 (docs/RASPBERRY_PI.md)
 # PC 터미널 1: 파이의 서보 버스를 가상 포트로 연결 (USB 직결이면 생략하고 robot.port 를 /dev/ttyACM* 로)
