@@ -66,7 +66,7 @@ coffee-robot              # 2) 모카 실행 (정책은 첫 커피 요청 때 �
 | 단계 | 할 일 | 문서 |
 |---|---|---|
 | 1 | 라즈베리파이 설치, 배선, 카메라 위치 | [docs/RASPBERRY_PI.md](docs/RASPBERRY_PI.md), [docs/HARDWARE.md](docs/HARDWARE.md) |
-| 2 | 캘리브레이션, 텔레옵 연습, **터치 버튼용 전도성 팁** 부착 | [docs/TRAINING.md](docs/TRAINING.md) §3 |
+| 2 | 캘리브레이션, 손으로 가르치기 연습, **터치 버튼용 전도성 팁** 부착 (팔은 한 대면 충분) | [docs/CALIBRATION_RECORDING_GUIDE.docx](docs/CALIBRATION_RECORDING_GUIDE.docx), [docs/TRAINING.md](docs/TRAINING.md) §3 |
 | 3 | 스킬 4개 데모 녹화 (총 50개 이하) | [docs/TRAINING.md](docs/TRAINING.md) §4 |
 | 4 | 학습 환경 구성(`scripts/setup_train_env.sh`, `check_train_env.sh`) → SmolVLA 파인튜닝 → `policy.path` 지정 | [docs/TRAINING.md](docs/TRAINING.md) §0, §5 |
 | 5 | 스킬별 평가, 보정 데모 | [docs/TRAINING.md](docs/TRAINING.md) §6 |
@@ -98,6 +98,7 @@ coffee_robot/
   camera_hub.py     [파이] USB 카메라 → ZMQ (LeRobot ZMQ 카메라 호환)
   serial_bridge.py  [파이] USB 시리얼 ↔ TCP:8888 서보 버스 브리지
   wifi_serial.py    [PC] 파이 브리지 → 가상 시리얼 포트 (socat)
+  hand_teach.py     리더 암 없이 녹화: 손으로 가르치기 → 재생하며 녹화 (coffee-hand-record)
   lerobot_launcher.py  config 기반 LeRobot 0.7 CLI 래퍼 (calibrate/teleop/record/rollout)
 deploy/pi/         라즈베리파이 systemd 서비스 + install.sh
 scripts/            setup_train_env.sh, check_train_env.sh, make_fake_dataset.py,

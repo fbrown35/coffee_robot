@@ -29,6 +29,7 @@ coffee-robot = "coffee_robot.assistant:main"
 coffee-camera-hub = "coffee_robot.camera_hub:main"
 coffee-wifi-serial = "coffee_robot.wifi_serial:main"
 coffee-serial-bridge = "coffee_robot.serial_bridge:main"
+coffee-hand-record = "coffee_robot.hand_teach:main"
 coffee-lerobot = "coffee_robot.lerobot_launcher:main"
 
 [tool.setuptools]
