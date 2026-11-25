@@ -11,7 +11,7 @@
 | 순서 | 할 일 | 어디서 | 명령 / 문서 |
 |---|---|---|---|
 | ① | 학습용 GPU 환경 구성 + 점검 | GPU 머신 | `./scripts/setup_train_env.sh` → `./scripts/check_train_env.sh` (§5-1) |
-| ② | 로봇 캘리브레이션, 텔레옵 연습 | 로봇 PC | `coffee-lerobot calibrate` / `teleop` (§4) |
+| ② | 로봇 캘리브레이션, 손으로 가르치기 연습 | 로봇 PC | `coffee-lerobot calibrate` (§4) |
 | ③ | 스킬 4개 데모 녹화 (총 50개 이하) | 로봇 PC | `./scripts/record_all_skills.sh` (§2~4) |
 | ④ | 데이터셋을 GPU 머신으로 옮기기 | | Hub 업로드 또는 폴더 복사 (§5-2) |
 | ⑤ | 파인튜닝 | GPU 머신 | `./scripts/train.sh smolvla <hf_user>/coffee_skills` (§5-3) |
@@ -66,24 +66,37 @@
 
 > 캘리브레이션부터 녹화까지 단계별 설명(Mac 기준, 화면 안내·키 조작·문제 해결 포함)은 Word 문서 **[CALIBRATION_RECORDING_GUIDE.docx](CALIBRATION_RECORDING_GUIDE.docx)** 에 있습니다.
 
+팔은 **한 대(팔로워)만** 있으면 됩니다. 리더 암 없이 **손으로 가르치기 → 로봇이 재생하며 녹화** 방식을 씁니다
+(`config.yaml`의 `recording.method: hand`, 모듈은 `coffee_robot/hand_teach.py`).
+
+1. **가르치기**: 팔 관절 5개의 토크가 꺼집니다. 팔을 손으로 잡고 동작을 보여 줍니다. 그리퍼는 키보드 `j`/`k`로 열고 닫습니다.
+   이때는 관절 궤적만 저장하고 영상은 저장하지 않습니다(영상에 손이 찍히므로).
+2. **재생 녹화**: 장면을 시작 상태로 되돌리면 로봇이 같은 궤적을 스스로 따라 움직입니다. 이때 카메라 영상과 관절 값을 녹화합니다.
+   영상에는 로봇 혼자 움직이는 모습만 남아서, 실제로 실행할 때와 조건이 같습니다.
+
 ```bash
-# 라즈베리파이: 서보 브리지 + 카메라 허브 서비스가 실행 중이어야 함 (docs/RASPBERRY_PI.md)
-# PC 터미널 1: 파이의 서보 버스를 가상 포트로 연결 (USB 직결이면 생략하고 robot.port 를 /dev/ttyACM* 로)
-coffee-wifi-serial
-# PC 터미널 2: 캘리브레이션 (처음 한 번)
-coffee-lerobot calibrate
-coffee-lerobot calibrate-leader
-coffee-lerobot teleop                       # 리더 암으로 조종 연습
-# 녹화: 모든 스킬을 하나의 데이터셋에 차례로 녹화
-./scripts/record_all_skills.sh <hf_user>/coffee_skills
+# 라즈베리파이: 카메라 허브 서비스가 실행 중이어야 함 (docs/RASPBERRY_PI.md). 서보는 USB 직결 권장
+coffee-lerobot calibrate                                   # 처음 한 번
+./scripts/record_all_skills.sh <hf_user>/coffee_skills     # 스킬 4개를 차례로 (이어서 쓰기 자동)
+coffee-hand-record place_cup --repo-id <hf_user>/coffee_skills --episodes 3   # 스킬 하나만 더
 ```
+
+| 단계 | 키 |
+|---|---|
+| 가르치기 | `Space` 시작/끝, `j`/`k` 그리퍼 조절(누르고 있으면 계속), `q` 취소 |
+| 재생 후 | `Enter` 저장, `r` 다시 재생, `x` 버리고 다시 가르치기 |
 
 녹화할 때 지킬 것:
 
-- **다양하게**: 컵 위치를 ±2~3cm, 회전 ±20° 정도로 바꿔 가며 녹화합니다. 조명(낮/밤)도 섞으세요.
+- **가르칠 때는 버튼이 눌리지 않게**: 터치 팁의 접지선을 빼 두면 가르치는 동안 버튼이 실제로 눌리지 않습니다.
+  재생 녹화 전에 다시 연결하세요. 그래야 머신 상태(전원 등)를 매번 되돌릴 필요가 줄어듭니다.
+- **재생 전 장면 되돌리기**: 컵을 가르치기 시작할 때의 자리로 정확히 되돌립니다. 재생은 같은 궤적을 그대로 따라가기 때문입니다.
+- **다양하게**: 에피소드마다 컵 위치를 ±2~3cm, 회전 ±20° 정도로 바꿔 가며 가르칩니다. 조명(낮/밤)도 섞으세요.
 - **일관되게**: 같은 스킬은 같은 전략으로 합니다(예: 컵은 항상 옆면 중간을 잡기). 전략이 섞이면 모델이 헷갈립니다.
-- **부드럽게, 한 번에**: 멈칫하거나 다시 하는 동작은 넣지 마세요. 실수한 에피소드는 `←` 키로 다시 녹화합니다.
+- **부드럽게, 한 번에**: 멈칫하거나 다시 하는 동작은 넣지 마세요. 가벼운 손떨림은 자동으로 걸러집니다.
+- **그리퍼는 컵에 닿은 뒤 `j`를 2~3번 더**: 재생할 때 그 값까지 조이므로 컵을 확실히 쥡니다. 너무 조이면 종이컵이 찌그러집니다.
 - **버튼은 확실히**: 누른 상태로 0.3~0.5초 머물렀다가 뗍니다.
+- 가르친 궤적은 `data/trajectories/`에도 저장됩니다.
 - 확인: `lerobot-dataset-viz --repo-id <hf_user>/coffee_skills --episode-index 0`
 
 ## 5. 학습

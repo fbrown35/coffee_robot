@@ -9,7 +9,13 @@ robot:
   max_relative_target: 20        # 한 스텝당 최대 관절 변화(도). 안전장치
   bus_timeout_ms: 150            # WiFi 지연을 고려한 응답 대기(기본 50ms → 150ms)
 
-# 리더 암(텔레오퍼레이션, 데이터 수집용). 지연 없이 하려면 PC에 USB로 직접 연결
+# 데모 녹화 방법
+#   hand   : 리더 암 없이 — 팔을 손으로 움직여 가르친 뒤 로봇이 재생하는 동안 녹화 (coffee-hand-record)
+#   leader : 리더 암으로 텔레오퍼레이션하며 녹화 (아래 teleop 설정 필요, lerobot-record)
+recording:
+  method: hand
+
+# (leader 방식일 때만) 리더 암. 지연 없이 하려면 PC에 USB로 직접 연결
 teleop:
   type: so100_leader
   id: coffee_leader
